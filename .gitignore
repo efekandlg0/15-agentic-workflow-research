@@ -1,0 +1,11 @@
+# Gizli anahtarlar — ASLA commit edilmez
+.env
+
+# Python sanal ortamı ve önbellekler
+.venv/
+__pycache__/
+*.pyc
+
+# İşletim sistemi / editör artıkları
+.DS_Store
+.claude/

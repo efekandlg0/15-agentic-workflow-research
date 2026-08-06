@@ -1,0 +1,8 @@
+# Akademik "araştırma konsolu" teması — parşömen zemin + mürekkep metin.
+# Başlıklar ui.py'deki CSS ile serif (Georgia); gövde okunabilirlik için sans-serif.
+[theme]
+primaryColor = "#1d4e79"
+backgroundColor = "#faf9f6"
+secondaryBackgroundColor = "#f1ede3"
+textColor = "#1c2733"
+font = "sans serif"

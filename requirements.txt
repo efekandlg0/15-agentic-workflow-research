@@ -1,0 +1,17 @@
+# OpenAI Agents SDK — ajan tanımları + Runner
+openai-agents
+
+# LangGraph — workflow iskeleti, GATE'ler (interrupt), paralel dallar, checkpointer
+langgraph
+
+# .env okuma
+python-dotenv
+
+# Web arayüzü (app.py)
+streamlit
+
+# Crossref / arXiv sorgulama araçları (research_agents/tools.py).
+# openai-agents ile zaten geliyor; bağımlılık açık olsun diye yazıldı.
+httpx
+
+# Test edildiği sürümler: openai-agents 0.2.x, langgraph 1.x, streamlit 1.x

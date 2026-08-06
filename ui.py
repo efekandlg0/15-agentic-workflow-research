@@ -231,9 +231,9 @@ def render_header(st, mock: bool):
              else '<span class="arw-badge arw-badge-real">● GERÇEK MODEL — API</span>')
     st.markdown(
         '<div class="arw-header">'
-        f'<div class="arw-title">Agentic Research Workflow &nbsp;{badge}</div>'
-        '<div class="arw-subtitle">15 ajan · 5 faz · 5 insan kapısı — '
-        'RL tabanlı bacaklı robot araştırması</div>'
+        f'<div class="arw-title">Utonium &nbsp;{badge}</div>'
+        '<div class="arw-subtitle">agentic research workflow — 15 ajan · 5 faz · '
+        '5 insan kapısı</div>'
         '</div>',
         unsafe_allow_html=True,
     )

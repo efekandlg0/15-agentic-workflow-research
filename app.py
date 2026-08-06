@@ -21,8 +21,12 @@ from workflow.common import (
 )
 
 load_dotenv()
-st.set_page_config(page_title="Agentic Research Workflow", layout="wide")
+st.set_page_config(page_title="Utonium", page_icon="assets/logo_small.png", layout="wide")
 ui.inject_css(st)
+try:
+    st.logo("assets/logo_small.png")   # kenar çubuğu üstünde logo
+except Exception:
+    pass
 
 # Her GATE'in fazına ait ajanlar: (node_adı, görünen ad). 'tekrarla'da seçim için.
 PHASE_AGENTS_UI = {

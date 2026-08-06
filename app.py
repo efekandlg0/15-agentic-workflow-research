@@ -6,12 +6,14 @@ Streamlit arayüzü — puanlı literatür + insan kontrollü workflow + incelik
   streamlit run app.py               # gerçek model (.env içinde OPENAI_API_KEY)
 """
 import os
-import uuid
+import sqlite3
 
 import streamlit as st
 from dotenv import load_dotenv
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.types import Command
 
+import projects as prj
 import ui
 from workflow import build_graph
 from workflow.common import (
@@ -38,7 +40,12 @@ PHASE_AGENTS_UI = {
 
 @st.cache_resource
 def get_graph():
-    return build_graph()
+    """Grafik + KALICI checkpoint: durum data/checkpoints.db'ye yazılır; uygulama
+    kapatılıp açılsa da her proje kaldığı kapıdan devam eder."""
+    os.makedirs(prj.DATA_DIR, exist_ok=True)
+    conn = sqlite3.connect(os.path.join(prj.DATA_DIR, "checkpoints.db"),
+                           check_same_thread=False)
+    return build_graph(SqliteSaver(conn))
 
 
 graph = get_graph()
@@ -48,24 +55,61 @@ def _why(label):
     return st.popover(label) if hasattr(st, "popover") else st.expander(label)
 
 
-def _start():
-    st.session_state.thread_id = str(uuid.uuid4())
-    st.session_state.config = {"configurable": {"thread_id": st.session_state.thread_id}}
+def _set_session(pid):
+    st.session_state.project_id = pid
+    st.session_state.config = {"configurable": {"thread_id": pid}}
     st.session_state.history = []
     st.session_state.current = None
     st.session_state.done = False
     st.session_state.final = None
-    _advance({"topic": st.session_state.topic})
+
+
+def _close_session():
+    for k in ("project_id", "config", "history", "current", "done", "final"):
+        st.session_state.pop(k, None)
+
+
+def _start():
+    """Yeni proje: kayıt defterine ekler, akışı ilk kapıya kadar çalıştırır."""
+    p = prj.create_project(st.session_state.topic)
+    _set_session(p["id"])
+    _advance({"topic": p["topic"]})
+
+
+def _snapshot_interrupt(snap):
+    """Checkpoint anlık görüntüsünden bekleyen kapı payload'ını çıkarır."""
+    for task in getattr(snap, "tasks", ()):
+        for intr in getattr(task, "interrupts", ()):
+            return intr.value
+    return None
+
+
+def _open_project(p):
+    """Kayıtlı projeyi açar: diskteki checkpoint'ten kaldığı kapıyı geri yükler."""
+    _set_session(p["id"])
+    prj.set_last_opened(p["id"])
+    st.session_state.history = list(p.get("history", []))
+    snap = graph.get_state(st.session_state.config)
+    payload = _snapshot_interrupt(snap)
+    if payload:
+        st.session_state.current = payload
+    elif snap.values:
+        st.session_state.done = True
+        st.session_state.final = snap.values.get("final_decision",
+                                                 p.get("final") or "(yok)")
 
 
 def _advance(graph_input):
     result = graph.invoke(graph_input, st.session_state.config)
+    pid = st.session_state.project_id
     if "__interrupt__" in result:
         st.session_state.current = result["__interrupt__"][0].value
+        prj.update_project(pid, status=st.session_state.current["gate"] + " bekliyor")
     else:
         st.session_state.current = None
         st.session_state.done = True
         st.session_state.final = result.get("final_decision", "(yok)")
+        prj.update_project(pid, status="tamamlandı", final=st.session_state.final)
 
 
 def _submit(resume):
@@ -77,6 +121,7 @@ def _submit(resume):
     if resume.get("note"):
         lbl += ": " + resume["note"]
     st.session_state.history.append({"gate": payload["gate"], "karar": lbl})
+    prj.append_history(st.session_state.project_id, payload["gate"], lbl)
     _advance(Command(resume=resume))
 
 
@@ -320,15 +365,58 @@ def _decision_controls(payload):
 mock = os.getenv("MOCK_LLM") == "1"
 ui.render_header(st, mock)
 
+# Oturum ilk açıldığında son çalışılan projeyi diskten otomatik yükle.
+if "config" not in st.session_state:
+    _last = prj.get_project(prj.last_opened() or "")
+    if _last:
+        _open_project(_last)
+
 # ---- Kenar çubuğu ----
 st.sidebar.markdown("### Kontrol Paneli")
 if "topic" not in st.session_state:
     st.session_state.topic = (
         "RL tabanlı wheel-legged quadruped robotlarda enerji verimli hareket kontrolü"
     )
-st.sidebar.text_area("Araştırma konusu", key="topic", height=110)
-if st.sidebar.button("Başlat / Yeniden başlat", use_container_width=True, type="primary"):
+st.sidebar.text_area("Yeni araştırma konusu", key="topic", height=110)
+if st.sidebar.button("Yeni proje başlat", use_container_width=True, type="primary"):
     _start()
+
+# ---- Kayıtlı projeler ("sekmeler") ----
+_plist = prj.list_projects()
+if _plist:
+    st.sidebar.markdown("### Projeler")
+    _cur_pid = st.session_state.get("project_id")
+    if _cur_pid:
+        _cur = prj.get_project(_cur_pid)
+        if _cur:
+            st.sidebar.caption(f"Açık proje: {_cur['topic'][:60]} · {_cur['status']}")
+
+    def _plabel(pid):
+        p = next((x for x in _plist if x["id"] == pid), None)
+        if not p:
+            return "?"
+        t = p["topic"] if len(p["topic"]) <= 42 else p["topic"][:42] + "…"
+        return f"{t} · {p['status']}"
+
+    _ids = [p["id"] for p in _plist]
+    _sel = st.sidebar.selectbox(
+        "Kayıtlı projeler", _ids, format_func=_plabel,
+        index=_ids.index(_cur_pid) if _cur_pid in _ids else 0,
+        key="project_select",
+    )
+    _c1, _c2 = st.sidebar.columns(2)
+    if _c1.button("Aç", use_container_width=True):
+        _open_project(prj.get_project(_sel))
+        st.rerun()
+    if _c2.button("Sil", use_container_width=True):
+        prj.delete_project(_sel)
+        try:
+            graph.checkpointer.delete_thread(_sel)   # diskteki checkpoint'i de temizle
+        except Exception:
+            pass
+        if _sel == _cur_pid:
+            _close_session()
+        st.rerun()
 
 if st.session_state.get("history"):
     st.sidebar.markdown("### Verilen kararlar")
@@ -343,7 +431,8 @@ _done = bool(st.session_state.get("done"))
 ui.render_stepper(st, _current_gate, _done)
 
 if not st.session_state.get("config"):
-    st.info("Soldan araştırma konusunu gir ve **Başlat**'a bas. "
+    st.info("Soldan yeni araştırma konusu girip **Yeni proje başlat**'a bas; "
+            "ya da kayıtlı bir projeyi seçip **Aç** ile kaldığın yerden devam et. "
             "Akış ilk insan kapısına (GATE-1) kadar otomatik çalışır.")
     st.markdown("### Pipeline — sistem sırası ile nasıl ilerliyor?")
     ui.render_pipeline(st)
@@ -384,4 +473,9 @@ elif st.session_state.get("current"):
     st.markdown("#### Neredeyim?")
     ui.render_current_phase(st, payload["gate"])
     if st.toggle("Tüm pipeline şemasını göster", key="show_full_pipeline"):
-        ui.render_pipeline(st, current_gate=payload["gate"]) 
+        ui.render_pipeline(st, current_gate=payload["gate"])
+
+else:
+    # Proje açık ama görüntülenecek durum yok (ör. hiç ilerlememiş kayıt).
+    st.warning("Bu projede görüntülenecek bir durum bulunamadı. Soldan yeni bir proje "
+               "başlatabilir veya bu projeyi silebilirsin.") 

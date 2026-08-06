@@ -4,6 +4,9 @@ openai-agents
 # LangGraph — workflow iskeleti, GATE'ler (interrupt), paralel dallar, checkpointer
 langgraph
 
+# Kalıcı checkpoint (data/checkpoints.db) — projeler kapat-aç sonrası devam eder
+langgraph-checkpoint-sqlite
+
 # .env okuma
 python-dotenv
 

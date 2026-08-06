@@ -1,6 +1,9 @@
 # Gizli anahtarlar — ASLA commit edilmez
 .env
 
+# Yerel araştırma verisi (projeler + checkpoint veritabanı) — kişisel, repoya gitmez
+data/
+
 # Python sanal ortamı ve önbellekler
 .venv/
 __pycache__/

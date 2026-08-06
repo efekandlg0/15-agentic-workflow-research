@@ -209,6 +209,45 @@ hr { border-color: #e2dac6; }
     padding:.5rem .7rem; margin-top:.2rem;
 }
 
+/* ---- Örnek metinler (placeholder): italik + soluk, gerçek içerikle karışmasın ---- */
+.stTextArea textarea::placeholder, .stTextInput input::placeholder {
+    font-style: italic; opacity: .55; color: #8a8266;
+}
+
+/* ---- Aktif proje kartı (kenar çubuğu üstü) ---- */
+.arw-active {
+    background: linear-gradient(135deg, #eaf1f8 0%, #f4f0e6 100%);
+    border: 1px solid #b9cfe3; border-left: 5px solid #1d4e79;
+    border-radius: 9px; padding: .55rem .75rem; margin-bottom: .7rem;
+}
+.arw-active .a-tag {
+    font-size: .62rem; font-weight: 700; letter-spacing: 1.4px; color: #1d4e79;
+}
+.arw-active .a-name {
+    font-family: Georgia, serif; font-size: .92rem; font-weight: 700;
+    color: #1c2733; line-height: 1.3; margin: .15rem 0 .25rem 0;
+    overflow-wrap: anywhere;
+}
+.arw-active .a-state {
+    display: inline-block; font-size: .68rem; font-weight: 700; padding: .1rem .45rem;
+    border-radius: 999px; background: #fff; border: 1px solid #b9cfe3; color: #1d4e79;
+}
+.arw-active.none {
+    background: #f4f0e6; border-color: #ddd3ba; border-left-color: #b9a97c;
+}
+.arw-active.none .a-tag, .arw-active.none .a-name { color: #8a8266; }
+
+/* ---- Ana ekranda açık proje şeridi ---- */
+.arw-openbar {
+    display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap;
+    background: #f7f4ec; border: 1px solid #e6dfcd; border-radius: 8px;
+    padding: .4rem .8rem; margin-bottom: .8rem; font-size: .84rem; color: #5c5642;
+}
+.arw-openbar .o-tag {
+    font-size: .64rem; font-weight: 700; letter-spacing: 1.2px; color: #8a8266;
+}
+.arw-openbar .o-name { font-weight: 700; color: #1c2733; overflow-wrap: anywhere; }
+
 /* ---- Kenar çubuğu karar zaman çizelgesi ---- */
 .arw-hist {
     background: #fffdf9; border: 1px solid #e6dfcd; border-left: 4px solid #b9a97c;
@@ -343,6 +382,37 @@ def gate_banner(st, gate: str, mesaj: str):
         '</div>',
         unsafe_allow_html=True,
     )
+
+
+def _esc(s) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def render_active_project(st, project):
+    """Kenar çubuğunun EN ÜSTÜ: şu an hangi projede olduğunu net gösterir."""
+    if not project:
+        st.sidebar.markdown(
+            '<div class="arw-active none"><div class="a-tag">AÇIK PROJE</div>'
+            '<div class="a-name">— henüz proje açılmadı —</div></div>',
+            unsafe_allow_html=True)
+        return
+    st.sidebar.markdown(
+        '<div class="arw-active">'
+        '<div class="a-tag">AÇIK PROJE</div>'
+        f'<div class="a-name">{_esc(project["topic"])}</div>'
+        f'<span class="a-state">{_esc(project.get("status", "—"))}</span>'
+        '</div>',
+        unsafe_allow_html=True)
+
+
+def render_open_bar(st, project):
+    """Ana ekranın üstünde ince şerit: çalışılan projeyi hatırlatır."""
+    if not project:
+        return
+    st.markdown(
+        '<div class="arw-openbar"><span class="o-tag">ÇALIŞILAN PROJE</span>'
+        f'<span class="o-name">{_esc(project["topic"])}</span></div>',
+        unsafe_allow_html=True)
 
 
 def history_item_html(gate: str, karar: str) -> str:

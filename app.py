@@ -376,31 +376,38 @@ if "config" not in st.session_state:
         _open_project(_last)
 
 # ---- Kenar çubuğu ----
+_cur_pid = st.session_state.get("project_id")
+_cur_project = prj.get_project(_cur_pid) if _cur_pid else None
+ui.render_active_project(st, _cur_project)   # EN ÜSTTE: hangi projedeyim?
+
 st.sidebar.markdown("### Kontrol Paneli")
 if "topic" not in st.session_state:
-    st.session_state.topic = (
-        "RL tabanlı wheel-legged quadruped robotlarda enerji verimli hareket kontrolü"
-    )
-st.sidebar.text_area("Yeni araştırma konusu", key="topic", height=110)
+    st.session_state.topic = ""              # boş: örnek metin placeholder olarak görünür
+st.sidebar.text_area(
+    "Yeni araştırma konusu", key="topic", height=110,
+    placeholder="örn: RL tabanlı wheel-legged quadruped robotlarda enerji verimli "
+                "hareket kontrolü",
+)
 if st.sidebar.button("Yeni proje başlat", use_container_width=True, type="primary"):
-    _start()
+    if st.session_state.topic.strip():
+        _start()
+        st.rerun()
+    else:
+        st.sidebar.warning("Önce bir araştırma konusu yaz.")
 
 # ---- Kayıtlı projeler ("sekmeler") ----
 _plist = prj.list_projects()
 if _plist:
     st.sidebar.markdown("### Projeler")
-    _cur_pid = st.session_state.get("project_id")
-    if _cur_pid:
-        _cur = prj.get_project(_cur_pid)
-        if _cur:
-            st.sidebar.caption(f"Açık proje: {_cur['topic'][:60]} · {_cur['status']}")
+    st.sidebar.caption("Listeden seçip **Aç**'a basınca o projeye geçersin.")
 
     def _plabel(pid):
         p = next((x for x in _plist if x["id"] == pid), None)
         if not p:
             return "?"
-        t = p["topic"] if len(p["topic"]) <= 42 else p["topic"][:42] + "…"
-        return f"{t} · {p['status']}"
+        t = p["topic"] if len(p["topic"]) <= 40 else p["topic"][:40] + "…"
+        mark = "● " if pid == _cur_pid else "○ "   # dolu daire = şu an açık olan
+        return f"{mark}{t} · {p['status']}"
 
     _ids = [p["id"] for p in _plist]
     _sel = st.sidebar.selectbox(
@@ -429,9 +436,10 @@ if st.session_state.get("history"):
         unsafe_allow_html=True,
     )
 
-# ---- Aktif durum (stepper her ekranda görünür) ----
+# ---- Aktif durum (açık proje şeridi + stepper her ekranda görünür) ----
 _current_gate = (st.session_state.get("current") or {}).get("gate")
 _done = bool(st.session_state.get("done"))
+ui.render_open_bar(st, _cur_project)
 ui.render_stepper(st, _current_gate, _done)
 
 if not st.session_state.get("config"):

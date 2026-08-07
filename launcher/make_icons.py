@@ -4,6 +4,7 @@
   logo.png       — arayüzde kullanılan yuvarlak köşeli logo (1024px)
   logo_small.png — sekme ikonu / kenar çubuğu logosu (256px)
   icon_mac.png   — .icns için macOS yerleşimi: kenar boşluklu + squircle köşeli
+  icon_win.ico   — Windows kısayol simgesi (16-256px katmanlı)
 
 Çalıştır:  python3 launcher/make_icons.py [kaynak.png]
 Kaynak verilmezse assets/logo_source.png kullanılır.
@@ -62,7 +63,10 @@ def main():
     ui.resize((1024, 1024), Image.LANCZOS).save(os.path.join(ASSETS, "logo.png"))
     ui.resize((256, 256), Image.LANCZOS).save(os.path.join(ASSETS, "logo_small.png"))
     mac_icon(src).save(os.path.join(ASSETS, "icon_mac.png"))
-    print("Üretildi: assets/logo.png, logo_small.png, icon_mac.png")
+    # Windows kısayol simgesi: tek dosyada birden çok boyut
+    ui.save(os.path.join(ASSETS, "icon_win.ico"),
+            sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+    print("Üretildi: assets/logo.png, logo_small.png, icon_mac.png, icon_win.ico")
 
 
 if __name__ == "__main__":

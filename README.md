@@ -1,138 +1,149 @@
-# Agentic Research Workflow — Başlangıç İskeleti
+---
+title: Utonium
+emoji: 🧪
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+sdk_version: 1.58.0
+python_version: "3.12"
+app_file: app.py
+pinned: false
+short_description: 15 ajanlı, insan kontrollü araştırma workflow'u (demo)
+---
 
-RL tabanlı bacaklı robot araştırması için **insan kontrollü (human-in-the-loop)** çok ajanlı workflow.
+# Utonium — Agentic Research Workflow
 
-**Mimari karar:**
-- **LangGraph** → workflow iskeleti: node'lar, GATE'ler (insan kontrolü), paralel dallar, state, kalıcılık.
+RL tabanlı bacaklı robot araştırması için **insan kontrollü (human-in-the-loop)**
+çok ajanlı araştırma workflow'u: **15 ajan · 5 faz · 5 insan kapısı (GATE)**.
+
+> ### 🧪 Bu sayfa bir vitrin (demo)
+> Buradaki kopya **MOCK modda** çalışır: ajanlar gerçek bir dil modeline gitmez,
+> temsili çıktı üretir. Amaç akışı, GATE mekaniğini ve arayüzü göstermektir.
+> Gerçek modeli çalıştırmak için aşağıdaki *Yerel kurulum* adımlarını izleyip
+> kendi `OPENAI_API_KEY` anahtarını kullan.
+>
+> Ayrıca Spaces'te disk kalıcı değildir — uygulama uykuya daldığında demo
+> projeleri sıfırlanır. Yerel kurulumda `data/checkpoints.db` kalıcıdır.
+
+---
+
+## Mimari karar
+
+- **LangGraph** → workflow iskeleti: node'lar, GATE'ler (insan kontrolü), paralel
+  dallar, state, kalıcılık.
 - **OpenAI Agents SDK** → her node'un *içinde* çalışan ajan (`Agent` + `Runner`).
-- **GATE'ler ajan değildir** → `interrupt()` çağıran ayrı LangGraph node'larıdır. İnsan, birinci sınıf bir karar düğümüdür.
+- **GATE'ler ajan değildir** → `interrupt()` çağıran ayrı LangGraph node'larıdır.
+  İnsan, birinci sınıf bir karar düğümüdür.
+- **Kalıcılık** → `SqliteSaver` ile `data/checkpoints.db`. Uygulama kapatılıp
+  açılsa bile her proje kaldığı kapıdan devam eder.
 
-Bu iskelet senin diyagramını birebir uygular:
+## Akış
 
+```mermaid
+flowchart TD
+    START([START]) --> L[1·literature]
+    L --> V[2·verification]
+    V --> G[3·gap]
+    G --> GATE1{{GATE-1}}
+
+    GATE1 -->|onayla| M[4·methodology]
+    GATE1 -->|onayla| B[5·benchmark]
+    GATE1 -->|onayla| R[6·risk]
+    GATE1 -.tekrarla/geri seçilen ajandan.-> L
+
+    M --> GATE2{{GATE-2}}
+    B --> GATE2
+    R --> GATE2
+
+    GATE2 -->|onayla| ENV[7·environment]
+    GATE2 -.geri.-> GATE1
+    GATE2 -.tekrarla seçilenler.-> M
+
+    ENV --> RLC[8·rl_coding]
+    RLC --> TR[9·training]
+    TR --> TS[10·testing]
+    TS --> GATE3{{GATE-3}}
+
+    GATE3 -->|onayla| STAT[11·statistical]
+    GATE3 -->|onayla| ABL[12·ablation]
+    GATE3 -.geri.-> GATE2
+    GATE3 -.tekrarla seçilen ajandan.-> ENV
+
+    STAT --> CRIT[13·critic]
+    ABL --> CRIT
+    CRIT --> GATE4{{GATE-4}}
+
+    GATE4 -->|onayla| WR[14·writing]
+    GATE4 -.geri.-> GATE3
+    GATE4 -.tekrarla.-> STAT
+
+    WR --> REV[15·review]
+    REV --> GATE5{{GATE-5}}
+
+    GATE5 -->|onayla| END([BİTİR])
+    GATE5 -.geri.-> GATE4
+    GATE5 -.tekrarla.-> WR
 ```
-literature  →  GATE-1 (insan)  →  ┌── methodology ──┐  →  GATE-2 (insan)  →  END
-                                  └── benchmark ────┘
-                                       (paralel)
-```
+
+Her GATE'te üç seçenek var: **onayla** (ilerle), **tekrarla** (seçtiğin ajanları
+yeniden çalıştır), **geri** (bir önceki kapıya dön). Ajanların ürettiği hiçbir şey
+insan onayı olmadan bir sonraki faza geçmez.
+
+## Ajanlar
+
+| Faz | Ajanlar |
+|-----|---------|
+| 1 — Literatür | Literature Search · Verification · Research Gap |
+| 2 — Tasarım (paralel) | Methodology Design · Benchmark · Risk Analysis |
+| 3 — Uygulama | Environment · RL Coding · Training · Testing |
+| 4 — Analiz | Statistical Analysis · Ablation Study · Scientific Critic |
+| 5 — Yazım | Writing · Scientific Review |
+
+12 ajan gerçek dış kaynaklara bağlı 8 araç kullanır: Crossref, arXiv ve GitHub
+araması; Crossref/arXiv doğrulaması; Semantic Scholar atıf sayısı; betimsel
+istatistik ve Welch t-testi. Ayrıntı: [`PIPELINE.md`](PIPELINE.md).
 
 ---
 
-## 1. Ortam Kurulumu (VS Code üzerinden)
-
-### Gereksinimler
-- Python **3.11+** (3.10 da çalışır)
-- VS Code + **Python** eklentisi (Microsoft)
-- Bir OpenAI API anahtarı
-
-### Adımlar
-
-**1.1** Bu klasörü VS Code'da aç: `File → Open Folder → agentic_research_starter`
-
-**1.2** VS Code'da terminal aç (`Terminal → New Terminal`) ve sanal ortam (venv) oluştur:
+## Yerel kurulum (gerçek model)
 
 ```bash
-# Windows (PowerShell)
-python -m venv .venv
-.venv\Scripts\Activate.ps1
+git clone https://github.com/efekandlg0/15-agentic-workflow-research.git
+cd 15-agentic-workflow-research
 
-# macOS / Linux
 python3 -m venv .venv
-source .venv/bin/activate
-```
-
-> Terminal başında `(.venv)` görünmeli. VS Code sağ altta "select interpreter" sorarsa `.venv` içindekini seç.
-
-**1.3** Bağımlılıkları kur:
-
-```bash
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+
+cp .env.example .env               # içine kendi OPENAI_API_KEY'ini yaz
+streamlit run app.py
 ```
 
-**1.4** API anahtarını ayarla. Proje klasöründe `.env` dosyası oluştur:
+`.env` yoksa uygulama **kendiliğinden MOCK moda düşer** — çökmez, kredi harcamaz.
+Üstteki rozet hangi modda olduğunu gösterir.
 
-```
-OPENAI_API_KEY=sk-...buraya-kendi-anahtarın...
-```
+Komut satırından çalıştırmak için: `python run.py`
 
-> `.env` dosyasını **asla** Git'e ekleme (`.gitignore`'a `.env` yaz).
-
----
-
-## 2. Çalıştırma
+### Masaüstü uygulaması olarak
 
 ```bash
-python run.py
+bash launcher/build_mac_app.sh                                    # macOS → ~/Applications/Utonium.app
+powershell -ExecutionPolicy Bypass -File launcher\kisayol_olustur.ps1   # Windows → masaüstü kısayolu
 ```
-
-Program akışı:
-1. **Literature Agent** çalışır, literatür özeti üretir.
-2. Ekranda **GATE-1** belirir, durur ve senden araştırma sorusunu ister.
-   Sen yazıp Enter'a basana kadar grafik **donmuş** halde bekler (state diske yazılı).
-3. Senin girdiğin soruyla **Methodology** ve **Benchmark** ajanları **paralel** çalışır.
-4. **GATE-2** belirir, iki öneriyi de gösterir, kararını ister.
-5. Workflow tamamlanır.
 
 ---
 
-## 3. Dosya Yapısı
+## Dokümanlar
 
-| Dosya | Görevi |
+| Dosya | İçerik |
 |-------|--------|
-| `agents_def.py` | OpenAI SDK ajan tanımları (Literature, Methodology, Benchmark) |
-| `graph.py` | LangGraph workflow: node'lar, GATE'ler (`interrupt`), paralel fan-out/join |
-| `run.py` | Sürücü: grafiği çalıştırır, interrupt yakalar, insan girdisini `Command(resume=...)` ile geri verir |
-| `requirements.txt` | Bağımlılıklar |
+| [`PIPELINE.md`](PIPELINE.md) | Ajan envanteri, araç bağımlılıkları, faz paralelliği, GATE mekaniği, state alanları |
+| [`YAPI.md`](YAPI.md) | Dosya/paket yapısı — neyi değiştirmek için hangi dosyaya bakılır |
+| [`KURULUM.md`](KURULUM.md) | Ayrıntılı kurulum adımları |
 
----
+## Notlar
 
-## 4. İnsan Kontrolü Nasıl Çalışıyor? (Önemli)
-
-GATE node'u şunu yapar:
-
-```python
-def gate1_node(state):
-    karar = interrupt({                       # ← grafik BURADA donar, state diske yazılır
-        "gate": "GATE-1",
-        "mesaj": "Araştırma sorusunu belirle.",
-        "literatur_ozeti": state["literature_output"],
-    })
-    return {"human_research_question": karar}  # ← resume'dan sonra devam eder
-```
-
-`run.py` içindeki sürücü döngüsü interrupt'ı yakalar, sana gösterir, cevabını alır ve
-`Command(resume="senin cevabın")` ile grafiği kaldığı yerden devam ettirir.
-
-> **Kritik kural:** `interrupt()` çağrısını **asla** `try/except` içine sarma — özel
-> kesinti exception'ını yakalarsan grafik düzgün duraklamaz. Ayrıca `interrupt()` çağrıldığında
-> node baştan yeniden çalışır, bu yüzden node içinde interrupt'tan önce ağır/yan etkili iş yapma.
-
----
-
-## 5. 15 Ajana Genişletme
-
-Bu iskelet 3 ajan + 2 GATE içeriyor. Tam workflow'a (15 ajan + 5 GATE) genişletmek için:
-
-1. **`agents_def.py`** içine her ajanı (Agent Specification Sheet'lerine göre) ekle.
-   Her ajanın `instructions`'ı kartındaki Rol + Amaç + Kısıtlar + Karar Yetkisi'ni içermeli.
-2. **`graph.py`** içine her ajan için bir node, her faz sonuna bir GATE node ekle.
-3. State'e (`ResearchState`) her ajanın çıktı alanını ekle.
-4. Kenarları (edge) zincire göre bağla; paralel olanları fan-out/join ile kur
-   (örn. Methodology ∥ Benchmark ∥ Risk → tek GATE'e).
-5. Kalıcılık için `InMemorySaver` yerine `AsyncSqliteSaver` kullan
-   (sunucu yeniden başlasa bile workflow hayatta kalır).
-
-### Karar yetkisini koda dökmek
-Her ajanın "veremez" kısıtları `instructions` içinde açıkça yazılmalı. Örn. Training Agent için:
-`"Hiçbir koşulda seed seçme/eleme yapma. Tüm tohumları raporla. Başarısız run'ları gizleme."`
-Bu, ajanı kart üzerindeki karar sınırına bağlar.
-
----
-
-## 6. Sık Karşılaşılan Sorunlar
-
-- `ModuleNotFoundError: No module named 'agents'` → proje klasöründe `agents/` adlı bir
-  alt klasör varsa paketi gölgeler. Klasörü yeniden adlandır, venv'in aktif olduğundan emin ol.
-- Grafik interrupt'ta donmuyor / sonsuz dönüyor → `compile(checkpointer=...)` unutulmuş olabilir.
-  **Checkpointer olmadan interrupt çalışmaz.**
-- Aynı `thread_id` ile tekrar çalıştırırsan eski state'ten devam eder; sıfırdan başlamak için
-  yeni bir `thread_id` üret.
+- Yerel paket adı `research_agents/` — `agents/` OpenAI kütüphanesine ait, çakışırdı.
+- `interrupt()` çağrısını **asla** `try/except` içine sarma; grafik düzgün duraklamaz.
+  Node interrupt sonrası baştan çalışır, o yüzden interrupt'tan önce ağır iş yapma.
+- Checkpointer olmadan `interrupt()` çalışmaz — `compile(checkpointer=...)` şart.

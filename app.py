@@ -2,8 +2,10 @@
 Streamlit arayüzü — puanlı literatür + insan kontrollü workflow + incelikli geri dönüş.
 
 Çalıştırma:
-  MOCK_LLM=1 streamlit run app.py    # ücretsiz, anahtarsız
+  MOCK_LLM=1 streamlit run app.py    # ücretsiz, anahtarsız (sahte ajanlar)
   streamlit run app.py               # gerçek model (.env içinde OPENAI_API_KEY)
+
+Anahtar hiç yoksa uygulama kendiliğinden MOCK moda düşer; çökmez, kredi harcamaz.
 """
 import os
 import sqlite3
@@ -17,7 +19,7 @@ import projects as prj
 import ui
 from workflow import build_graph
 from workflow.common import (
-    METRIC_LABELS, SCORE_WEIGHTS, METHOD_METRIC_LABELS, METHOD_WEIGHTS,
+    MOCK, METRIC_LABELS, SCORE_WEIGHTS, METHOD_METRIC_LABELS, METHOD_WEIGHTS,
 )
 
 load_dotenv()
@@ -366,8 +368,7 @@ def _decision_controls(payload):
 
 
 # ======================= Arayüz =======================
-mock = os.getenv("MOCK_LLM") == "1"
-ui.render_header(st, mock)
+ui.render_header(st, MOCK)   # rozet: workflow gerçekte hangi modda çalışıyor
 
 # Oturum ilk açıldığında son çalışılan projeyi diskten otomatik yükle.
 if "config" not in st.session_state:

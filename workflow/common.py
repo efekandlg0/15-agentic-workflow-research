@@ -5,7 +5,16 @@ import re
 import time
 from typing import TypedDict
 
-MOCK = os.getenv("MOCK_LLM") == "1"
+from dotenv import load_dotenv
+
+# .env BURADA okunur: MOCK kararı anahtarın varlığına bakıyor ve bu modül,
+# app.py/run.py içindeki load_dotenv() satırından ÖNCE içe aktarılıyor.
+load_dotenv()
+
+# Sahte ajanlar (ücretsiz, anahtarsız). MOCK_LLM=1 ile açıkça istenebilir; ayrıca
+# ortamda OPENAI_API_KEY yoksa kendiliğinden devreye girer. Böylece anahtarsız bir
+# kurulum (ör. herkese açık Spaces vitrini) ne çöker ne de kredi harcayabilir.
+MOCK = os.getenv("MOCK_LLM") == "1" or not os.getenv("OPENAI_API_KEY")
 if not MOCK:
     from agents import Runner
 

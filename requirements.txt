@@ -1,20 +1,24 @@
+# Sürümler SABİT: Hugging Face Spaces her build'de yeniden kurulum yapıyor;
+# sabitlenmezse üst sürüm bir gün vitrini sessizce kırar. Yükseltirken burayı
+# elle değiştir ve yerelde test et.
+
 # OpenAI Agents SDK — ajan tanımları + Runner
-openai-agents
+openai-agents==0.17.7
 
 # LangGraph — workflow iskeleti, GATE'ler (interrupt), paralel dallar, checkpointer
-langgraph
+langgraph==1.2.7
 
 # Kalıcı checkpoint (data/checkpoints.db) — projeler kapat-aç sonrası devam eder
-langgraph-checkpoint-sqlite
+langgraph-checkpoint-sqlite==3.1.1
 
 # .env okuma
-python-dotenv
+python-dotenv==1.2.2
 
-# Web arayüzü (app.py)
-streamlit
-
-# Crossref / arXiv sorgulama araçları (research_agents/tools.py).
+# Crossref / arXiv / GitHub sorgulama araçları (research_agents/tools.py).
 # openai-agents ile zaten geliyor; bağımlılık açık olsun diye yazıldı.
-httpx
+httpx==0.28.1
 
-# Test edildiği sürümler: openai-agents 0.2.x, langgraph 1.x, streamlit 1.x
+# Web arayüzü (app.py).
+# TAM sürüm sabitlenmez: Spaces'te streamlit sürümünü README frontmatter'ındaki
+# `sdk_version` belirler; burada tam sürüm yazarsak ikisi çakışır.
+streamlit>=1.58
